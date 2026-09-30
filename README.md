@@ -70,7 +70,7 @@ AML_project_code/
 ├── src/
 │   ├── config.py                   # Central parameters (sample rate 4000 Hz, paths)
 │   ├── audio_processor.py          # WAV validation, resampling, SNR assessment, pipeline
-│   ├── features.py                 # Handcrafted (27-dim) + Spectrogram (1024-dim) features
+│   ├── features.py                 # Handcrafted (20-dim) + Spectrogram (1024-dim) features
 │   ├── models.py                   # LogReg, Shallow BP, DeepNet, TransferModel, DLREnsemble
 │   ├── report_generator.py         # Printable HTML reports & scan history persistence
 │   ├── sample_generator.py         # Curated benchmark hydrophone scenarios (.wav)
