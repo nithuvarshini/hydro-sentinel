@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HYDRO-SENTINEL | Underwater Acoustic Target Detection & Monitoring</title>
+<style>
+  :root {
+    --bg-dark: #070D1B;
+    --bg-navy: #0D1629;
+    --bg-card: #13203C;
+    --bg-card-hover: #19294C;
+    --border: #22375F;
+    --border-bright: #324F88;
+    --cyan: #00D2FF;
+    --cyan-glow: rgba(0, 210, 255, 0.25);
+    --teal: #06B6D4;
+    --emerald: #10B981;
+    --emerald-bg: rgba(16, 185, 129, 0.15);
+    --amber: #F59E0B;
+    --amber-bg: rgba(245, 158, 11, 0.15);
+    --crimson: #EF4444;
+    --crimson-bg: rgba(239, 68, 68, 0.18);
+    --purple: #A855F7;
+    --text-main: #F1F5F9;
+    --text-muted: #94A3B8;
+    --text-dim: #64748B;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-dark);
+    background-image:
+      radial-gradient(ellipse at top center, rgba(13, 37, 77, 0.6) 0%, transparent 70%),
+      radial-gradient(circle at bottom right, rgba(0, 210, 255, 0.05) 0%, transparent 50%);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  /* Header & Navigation */
+  header {
+    background: rgba(13, 22, 41, 0.88);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-container {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 14px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .sonar-pulse {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--cyan) 20%, rgba(0,210,255,0.2) 70%);
+    border: 2px solid var(--cyan);
+    box-shadow: 0 0 14px var(--cyan);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .sonar-pulse::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 1px solid var(--cyan);
+    animation: sonarRing 2.2s infinite ease-out;
+  }
+  @keyframes sonarRing {
+    0% { transform: scale(1); opacity: 0.9; }
+    100% { transform: scale(2.2); opacity: 0; }
+  }
+  .brand-title {
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .brand-title span { color: var(--cyan); }
+  .brand-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 6px;
+    background: var(--bg-navy);
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tab-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.05); }
+  .tab-btn.active {
+    background: linear-gradient(135deg, #1C335C, #213B6E);
+    color: var(--cyan);
+    border: 1px solid var(--border-bright);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+
+  .station-telemetry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--emerald);
+    background: var(--emerald-bg);
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--emerald);
+    box-shadow: 0 0 8px var(--emerald);
+    animation: blink 1.6s infinite ease-in-out;
+  }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* Main Container */
+  main {
+    max-width: 1300px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 24px;
+    flex: 1;
+  }
+
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Cards & Layout */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  @media (max-width: 980px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+    position: relative;
+    overflow: hidden;
+  }
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 0.02em;
+  }
+  .card-title .icon { color: var(--cyan); }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+    text-decoration: none;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #0284C7, #0369A1);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+  }
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #0369A1, #0284C7);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(2, 132, 199, 0.45);
+  }
+  .btn-action {
+    background: linear-gradient(135deg, #00D2FF, #0284C7);
+    color: #070D1B;
+    font-weight: 700;
+    box-shadow: 0 4px 16px rgba(0, 210, 255, 0.4);
+  }
+  .btn-action:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 22px rgba(0, 210, 255, 0.6);
+  }
+  .btn-secondary {
+    background: #1C2D4E;
+    color: var(--text-main);
+    border: 1px solid var(--border-bright);
+  }
+  .btn-secondary:hover { background: #243862; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+  /* Upload & Input Zone */
+  .upload-box {
+    border: 2px dashed var(--border-bright);
+    border-radius: 10px;
+    padding: 24px;
+    text-align: center;
+    background: rgba(13, 22, 41, 0.4);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .upload-box:hover, .upload-box.dragover {
+    border-color: var(--cyan);
+    background: rgba(0, 210, 255, 0.05);
+  }
+  .upload-icon {
+    font-size: 32px;
+    color: var(--cyan);
+    margin-bottom: 8px;
+  }
+
+  .samples-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .sample-item {
+    background: #0F1A30;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .sample-item:hover {
+    border-color: var(--cyan);
+    background: #152445;
+  }
+  .sample-item.selected {
+    border-color: var(--cyan);
+    background: #162B54;
+    box-shadow: 0 0 10px rgba(0, 210, 255, 0.2);
+  }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .badge-danger { background: var(--crimson-bg); color: #FCA5A5; border: 1px solid var(--crimson); }
+  .badge-warning { background: var(--amber-bg); color: #FCD34D; border: 1px solid var(--amber); }
+  .badge-success { background: var(--emerald-bg); color: #86EFAC; border: 1px solid var(--emerald); }
+  .badge-info { background: rgba(6, 182, 212, 0.15); color: #67E8F9; border: 1px solid var(--teal); }
+  .badge-secondary { background: rgba(148, 163, 184, 0.15); color: #CBD5E1; border: 1px solid #64748B; }
+
+  /* Verdict Alert Box */
+  .verdict-banner {
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    border-left: 6px solid;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+  }
+  .verdict-banner.danger {
+    background: linear-gradient(135deg, #2D1418, #1E121E);
+    border-left-color: var(--crimson);
+    border-top: 1px solid rgba(239, 68, 68, 0.3);
+    border-right: 1px solid rgba(239, 68, 68, 0.2);
+    border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+  }
+  .verdict-banner.warning {
+    background: linear-gradient(135deg, #2B1D0E, #1F1710);
+    border-left-color: var(--amber);
+    border-top: 1px solid rgba(245, 158, 11, 0.3);
+    border-right: 1px solid rgba(245, 158, 11, 0.2);
+    border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+  }
+  .verdict-banner.info {
+    background: linear-gradient(135deg, #0C2136, #0D1A2E);
+    border-left-color: var(--teal);
+    border-top: 1px solid rgba(6, 182, 212, 0.3);
+    border-right: 1px solid rgba(6, 182, 212, 0.2);
+    border-bottom: 1px solid rgba(6, 182, 212, 0.2);
+  }
+  .verdict-banner.secondary {
+    background: linear-gradient(135deg, #1C2336, #141A28);
+    border-left-color: var(--amber);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+  }
+
+  .verdict-title {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .verdict-desc {
+    font-size: 13.5px;
+    color: #E2E8F0;
+    margin-top: 6px;
+    max-width: 780px;
+    line-height: 1.5;
+  }
+  .verdict-action {
+    margin-top: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  .metric-kpi {
+    background: #0E182F;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .kpi-label { font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+  .kpi-value { font-size: 22px; font-weight: 800; color: var(--text-main); margin-top: 4px; }
+  .kpi-sub { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+
+  /* Visualizations */
+  .viz-container {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .viz-img {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #0B132B;
+    display: block;
+  }
+
+  /* Tables */
+  .table-responsive { overflow-x: auto; margin-top: 10px; }
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: left;
+  }
+  table.data-table th {
+    background: #0E182F;
+    padding: 10px 14px;
+    color: var(--text-muted);
+    font-weight: 700;
+    border-bottom: 1px solid var(--border);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  table.data-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    color: var(--text-main);
+  }
+  table.data-table tr:hover { background: rgba(255,255,255,0.02); }
+
+  /* Timeline Segment Ribbon */
+  .timeline-ribbon {
+    display: flex;
+    gap: 4px;
+    margin: 16px 0;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .timeline-bar-seg {
+    flex: 1;
+    min-width: 50px;
+    height: 48px;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .timeline-bar-seg:hover { transform: scale(1.04); }
+  .timeline-bar-seg.target { background: rgba(239, 68, 68, 0.45); color: #FCA5A5; border-color: var(--crimson); }
+  .timeline-bar-seg.tentative { background: rgba(245, 158, 11, 0.4); color: #FCD34D; border-color: var(--amber); }
+  .timeline-bar-seg.uncertain { background: rgba(168, 85, 247, 0.4); color: #E9D5FF; border-color: var(--purple); }
+  .timeline-bar-seg.ambient { background: rgba(16, 185, 129, 0.25); color: #86EFAC; border-color: var(--emerald); }
+
+  /* Audio player style */
+  audio {
+    width: 100%;
+    margin-top: 10px;
+    height: 38px;
+    border-radius: 8px;
+    outline: none;
+  }
+
+  /* Loading State */
+  .scanning-overlay {
+    display: none;
+    padding: 40px;
+    text-align: center;
+  }
+  .radar-spinner {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 3px solid rgba(0, 210, 255, 0.2);
+    border-top-color: var(--cyan);
+    animation: spin 1s infinite linear;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 16px 24px;
+    background: #091020;
+    font-size: 12px;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Header & Nav -->
+<header>
+  <div class="nav-container">
+    <div class="brand">
+      <div class="sonar-pulse"></div>
+      <div>
+        <div class="brand-title">HYDRO-SENTINEL <span>PRO</span></div>
+        <div class="brand-sub">Underwater Acoustic Target Detection & Monitoring Platform</div>
+      </div>
+    </div>
+
+    <nav class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('dashboard')">&#127754; Dashboard</button>
+      <button class="tab-btn" onclick="switchTab('analyze')">&#127908; Analyze Audio</button>
+      <button class="tab-btn" onclick="switchTab('timeline')">&#9201; Detection Timeline</button>
+      <button class="tab-btn" onclick="switchTab('history')">&#128203; History &amp; Reports</button>
+      <button class="tab-btn" onclick="switchTab('insights')">&#128300; Model Insights</button>
+    </nav>
+
+    <div class="station-telemetry">
+      <div class="live-dot"></div>
+      <span>HYDROPHONE ARRAY · 4000 Hz READY</span>
+    </div>
+  </div>
+</header>
+
+<!-- Main Workspace -->
+<main>
+
+  <!-- TAB 1: DASHBOARD -->
+  <div id="tab-dashboard" class="tab-pane active">
+    <div class="grid-4" style="margin-bottom: 24px;">
+      <div class="card metric-kpi">
+        <div class="kpi-label">Operational Mode</div>
+        <div class="kpi-value" style="color: var(--cyan); font-size: 19px;">PASSIVE HORIZON</div>
+        <div class="kpi-sub">Continuous acoustic surveillance</div>
+      </div>
+      <div class="card metric-kpi">
+        <div class="kpi-label">Acoustic Backbone</div>
+        <div class="kpi-value" style="color: var(--emerald); font-size: 19px;">DEEP-DLR ENSEMBLE</div>
+        <div class="kpi-sub">Dual-label-reversed transfer learning</div>
+      </div>
+      <div class="card metric-kpi">
+        <div class="kpi-label">Inference Latency</div>
+        <div class="kpi-value" style="color: #60A5FA; font-size: 19px;">RTF &lt; 0.25</div>
+        <div class="kpi-sub">Edge CPU real-time capable</div>
+      </div>
+      <div class="card metric-kpi">
+        <div class="kpi-label">Noise Condition Profiler</div>
+        <div class="kpi-value" style="color: var(--amber); font-size: 19px;">AUTOMATED</div>
+        <div class="kpi-sub">Spectral SNR &amp; regime assessment</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">&#9881;</span> Quick Acoustic Scan</div>
+          <span class="badge badge-info">Direct Upload</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 13.5px; line-height: 1.5; margin-bottom: 16px;">
+          Analyze hydrophone WAV recordings to detect underwater surface ships, engine line spectra,
+          and propeller cavitation harmonics without manual SNR or domain tuning.
+        </p>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <button class="btn btn-action" onclick="switchTab('analyze')">&#128640; Launch Audio Analyzer</button>
+          <button class="btn btn-secondary" onclick="loadSampleFast('coastal_patrol_intermittent.wav')">&#9875; Test Coastal Patrol Passage</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">&#128225;</span> System Capabilities &amp; Literature Innovations</div>
+          <span class="badge badge-success">AML Assignment</span>
+        </div>
+        <ul style="color: var(--text-muted); font-size: 13px; line-height: 1.6; padding-left: 20px;">
+          <li><strong>Domain &amp; Environment Shift:</strong> Automated acoustic regime profiling and DLR transfer learning.</li>
+          <li><strong>Noisy Underwater Signals:</strong> Automated in-band SNR and Wiener spectral flatness calculation.</li>
+          <li><strong>Uncertainty Gating:</strong> Dual-branch DLR ensemble disagreement prevents overconfident false alarms.</li>
+          <li><strong>Multi-Interval Timeline:</strong> Continuous temporal tracking of vessel passage intervals.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Benchmark Scenarios Card -->
+    <div class="card" style="margin-top: 24px;">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">&#128266;</span> Benchmark Hydrophone Scenarios Available for Instant Testing</div>
+        <span class="badge badge-secondary">5 Scenarios</span>
+      </div>
+      <div class="grid-3" id="dash-samples-list">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: ANALYZE AUDIO (Core Task) -->
+  <div id="tab-analyze" class="tab-pane">
+    <div class="grid-2" style="margin-bottom: 24px;">
+      <!-- Upload Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">&#128193;</span> 1. Upload Underwater WAV File</div>
+          <span class="badge badge-info">Real Hydrophone Audio</span>
+        </div>
+        <div class="upload-box" id="drop-zone" onclick="document.getElementById('file-input').click()">
+          <div class="upload-icon">&#128392;</div>
+          <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px;">Click to Browse or Drag &amp; Drop WAV File</div>
+          <div style="font-size: 12px; color: var(--text-dim);">Standard uncompressed WAV (PCM 16/24/32-bit, mono/stereo, any sample rate)</div>
+          <input type="file" id="file-input" accept=".wav" style="display: none;" onchange="handleFileSelected(this.files[0])">
+        </div>
+        <div id="file-meta" style="margin-top: 12px; font-size: 12.5px; color: var(--cyan); display: none;"></div>
+      </div>
+
+      <!-- Benchmark Select Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">&#9875;</span> Or Select Pre-Packaged Benchmark Recording</div>
+          <span class="badge badge-secondary">Ready-to-Test</span>
+        </div>
+        <div class="samples-selector" id="analyze-samples-list">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Audio Player & Execution Bar -->
+    <div class="card" id="playback-card" style="margin-bottom: 24px; display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+        <div style="flex: 1; min-width: 280px;">
+          <div style="font-size: 13.5px; font-weight: 700; color: var(--text-main);" id="current-track-title">Selected Recording</div>
+          <audio id="audio-player" controls preload="metadata"></audio>
+        </div>
+        <div>
+          <button class="btn btn-action" id="btn-run-analysis" onclick="runAnalysis()">
+            &#128269; Execute Acoustic Target Detection
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scanning Loading Indicator -->
+    <div class="card scanning-overlay" id="scan-loading">
+      <div class="radar-spinner"></div>
+      <div style="font-size: 16px; font-weight: 700; color: var(--cyan);">Analyzing Hydrophone Acoustics...</div>
+      <div style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">
+        Extracting 1051-dim spectral &amp; LLD descriptors &middot; Running Deep-DLR dual-branch ensemble &middot; Assessing SNR
+      </div>
+    </div>
+
+    <!-- Analysis Output Container -->
+    <div id="analysis-results" style="display: none;">
+      <!-- Mission Verdict Banner -->
+      <div class="verdict-banner" id="verdict-banner">
+        <div>
+          <div class="verdict-title" id="verdict-title">TARGET DETECTED</div>
+          <div class="verdict-desc" id="verdict-desc">Vessel propulsion acoustics confirmed.</div>
+          <div class="verdict-action" id="verdict-action">Operator Action: Confirmed</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="kpi-label">Detection Confidence</div>
+          <div style="font-size: 28px; font-weight: 800; color: var(--text-main);" id="verdict-conf">98.5%</div>
+          <div style="font-size: 11px; color: var(--text-muted);" id="verdict-disagree">Branch Disagreement: 0.0%</div>
+        </div>
+      </div>
+
+      <!-- Signal Quality & Telemetry Grid -->
+      <div class="grid-4" style="margin-bottom: 24px;">
+        <div class="card metric-kpi">
+          <div class="kpi-label">Estimated In-Band SNR</div>
+          <div class="kpi-value" id="kpi-snr">+6.4 dB</div>
+          <div class="kpi-sub" id="kpi-floor">Floor: -48.2 dBFS</div>
+        </div>
+        <div class="card metric-kpi">
+          <div class="kpi-label">Signal Quality Index</div>
+          <div class="kpi-value" id="kpi-quality">88 / 100</div>
+          <div class="kpi-sub" id="kpi-quality-rating">Good Quality</div>
+        </div>
+        <div class="card metric-kpi">
+          <div class="kpi-label">Spectral Flatness</div>
+          <div class="kpi-value" id="kpi-flatness">0.082</div>
+          <div class="kpi-sub">Machinery Line Structure</div>
+        </div>
+        <div class="card metric-kpi">
+          <div class="kpi-label">Processing Latency / RTF</div>
+          <div class="kpi-value" id="kpi-latency">340 ms</div>
+          <div class="kpi-sub" id="kpi-rtf">RTF: 0.057 (Real-Time)</div>
+        </div>
+      </div>
+
+      <!-- Waveform and Spectrogram Visualizations -->
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">&#128200;</span> Acoustic Waveform &amp; Time-Frequency Spectrogram</div>
+          <div style="display: flex; gap: 8px;">
+            <span class="badge badge-info">0 - 1000 Hz Analysis Band</span>
+            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="switchTab('timeline')">View Interval Timeline &rarr;</button>
+          </div>
+        </div>
+        <div class="viz-container">
+          <div>
+            <div style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">
+              Waveform with Target Detection Intervals Highlighted:
+            </div>
+            <img class="viz-img" id="img-waveform" alt="Waveform">
+          </div>
+          <div style="margin-top: 10px;">
+            <div style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">
+              Spectrogram (Engine Harmonics &amp; Cavitation Hump):
+            </div>
+            <img class="viz-img" id="img-spectrogram" alt="Spectrogram">
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions Bar -->
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-bottom: 24px;">
+        <button class="btn btn-secondary" onclick="switchTab('timeline')">&#9201; Open Detailed Timeline</button>
+        <button class="btn btn-primary" onclick="openCurrentReport()">&#128196; Download / Print Mission Report</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: DETECTION TIMELINE -->
+  <div id="tab-timeline" class="tab-pane">
+    <div class="card" style="margin-bottom: 20px;">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">&#9201;</span> Multi-Segment Temporal Target Tracking</div>
+        <span class="badge badge-info" id="timeline-recording-name">Active Recording</span>
+      </div>
+      <p style="color: var(--text-muted); font-size: 13.5px; line-height: 1.5;">
+        Continuous underwater audio recordings are segmented into 1.0-second analysis windows.
+        Each interval is evaluated independently by the Deep-DLR Ensemble to detect when targets
+        enter, transit, or exit the hydrophone acoustic horizon.
+      </p>
+
+      <!-- Visual Timeline Ribbon -->
+      <div style="margin-top: 16px;">
+        <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+          Temporal Activity Map (Seconds):
+        </div>
+        <div class="timeline-ribbon" id="timeline-ribbon">
+          <!-- Segment blocks populated via JS -->
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table" id="timeline-table">
+          <thead>
+            <tr>
+              <th>Interval</th>
+              <th>Status / Verdict</th>
+              <th>P(Target)</th>
+              <th>Confidence</th>
+              <th>Branch Disagree</th>
+              <th>Segment SNR</th>
+              <th>Operational Recommendation</th>
+            </tr>
+          </thead>
+          <tbody id="timeline-tbody">
+            <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No analysis loaded yet. Please run an analysis in "Analyze Audio".</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: HISTORY & REPORTS -->
+  <div id="tab-history" class="tab-pane">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">&#128203;</span> Acoustic Detection Mission Register &amp; Reports</div>
+        <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;" onclick="loadHistory()">&#128260; Refresh History</button>
+      </div>
+      <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+        Inspect previous hydrophone analyses, review ambiguous signals, and generate standardized mission reports.
+      </p>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Report ID</th>
+              <th>Date / Time</th>
+              <th>Recording File</th>
+              <th>Duration</th>
+              <th>Verdict</th>
+              <th>Confidence</th>
+              <th>Est. SNR</th>
+              <th>Active Intervals</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="history-tbody">
+            <!-- Populated via JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 5: MODEL INSIGHTS (Academic Research Section) -->
+  <div id="tab-insights" class="tab-pane">
+    <div class="card" style="margin-bottom: 24px;">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">&#128300;</span> Academic Evaluation: Deep-DLR vs. Bao et al. (2025)</div>
+        <span class="badge badge-success">Advanced ML Rigor</span>
+      </div>
+      <p style="color: var(--text-muted); font-size: 13.5px; line-height: 1.6;">
+        <strong>Research Question:</strong> Does the Dual-Label-Reversed (DLR) ensemble strategy from Bao et al. (2025)
+        scale effectively once the classifier is extended beyond the paper's single-hidden-layer (80-neuron) BP network?
+        Below are the verified empirical results across 6 architectures evaluated on the held-out test domain.
+      </p>
+
+      <div class="table-responsive" style="margin-top: 14px;">
+        <table class="data-table" id="insights-metrics-table">
+          <thead>
+            <tr>
+              <th>Architecture / Pipeline</th>
+              <th>Accuracy (%)</th>
+              <th>Precision (%)</th>
+              <th>Recall (%)</th>
+              <th>F1 Score (%)</th>
+              <th>ROC-AUC</th>
+            </tr>
+          </thead>
+          <tbody id="insights-metrics-tbody">
+            <!-- Populated via JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 5-Seed Robustness Validation Card -->
+    <div class="card" style="margin-bottom: 24px;">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">&#128202;</span> 5-Seed Robustness Validation (Mean &plusmn; Std)</div>
+        <span class="badge badge-info">Independent Random Splits</span>
+      </div>
+      <p style="color: var(--text-muted); font-size: 13px; line-height: 1.5;">
+        To ensure results are not an artifact of a single fortunate split in the small (200-sample) target regime,
+        the entire pretraining, fine-tuning, and evaluation pipeline was replicated across 5 independent random seeds.
+      </p>
+      <div class="table-responsive" style="margin-top: 12px;">
+        <table class="data-table" id="insights-robustness-table">
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>Mean Accuracy &plusmn; Std</th>
+              <th>Mean F1 Score &plusmn; Std</th>
+            </tr>
+          </thead>
+          <tbody id="insights-robustness-tbody">
+            <!-- Populated via JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Academic Research Figure Gallery -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">&#128444;</span> Report Figure Gallery</div>
+        <span class="badge badge-secondary">Generated in results/</span>
+      </div>
+      <div class="grid-2" style="margin-top: 12px;">
+        <div>
+          <div style="font-size: 13px; font-weight: 700; color: var(--cyan); margin-bottom: 6px;">
+            Model Accuracy Comparison (Target Domain):
+          </div>
+          <img class="viz-img" src="/results_viz/fig_accuracy_comparison.png" alt="Accuracy Comparison">
+        </div>
+        <div>
+          <div style="font-size: 13px; font-weight: 700; color: var(--cyan); margin-bottom: 6px;">
+            5-Seed Robustness Error Bars:
+          </div>
+          <img class="viz-img" src="/results_viz/fig_robustness.png" alt="Robustness">
+        </div>
+        <div>
+          <div style="font-size: 13px; font-weight: 700; color: var(--cyan); margin-bottom: 6px;">
+            Held-Out Confusion Matrices:
+          </div>
+          <img class="viz-img" src="/results_viz/fig_confusion_matrices.png" alt="Confusion Matrices">
+        </div>
+        <div>
+          <div style="font-size: 13px; font-weight: 700; color: var(--cyan); margin-bottom: 6px;">
+            ROC Curves &amp; AUC:
+          </div>
+          <img class="viz-img" src="/results_viz/fig_roc_curves.png" alt="ROC Curves">
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div>
+    <strong>HYDRO-SENTINEL</strong> &middot; Underwater Acoustic Target Detection &amp; Monitoring System
+  </div>
+  <div>
+    Powered by Deep-DLR Ensemble Transfer Learning &middot; AML Assignment Project
+  </div>
+</footer>
+
+<script>
+// Global State
+let currentAudioFile = null;
+let currentSampleId = null;
+let currentAnalysisResult = null;
+let currentScanId = null;
+
+// Initialize on page load
+document.addEventListener("DOMContentLoaded", () => {
+  loadBenchmarkSamples();
+  loadHistory();
+  loadModelInsights();
+});
+
+function switchTab(tabId) {
+  document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+
+  const targetPane = document.getElementById("tab-" + tabId);
+  if (targetPane) targetPane.classList.add("active");
+
+  const btns = document.querySelectorAll(".tab-btn");
+  btns.forEach(btn => {
+    if (btn.getAttribute("onclick").includes(tabId)) {
+      btn.classList.add("active");
+    }
+  });
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// Load Benchmark Samples List
+async function loadBenchmarkSamples() {
+  try {
+    const res = await fetch("/api/samples");
+    const samples = await res.json();
+
+    const dashContainer = document.getElementById("dash-samples-list");
+    const analyzeContainer = document.getElementById("analyze-samples-list");
+
+    dashContainer.innerHTML = "";
+    analyzeContainer.innerHTML = "";
+
+    samples.forEach(s => {
+      // Dashboard card item
+      const dItem = document.createElement("div");
+      dItem.className = "sample-item";
+      dItem.onclick = () => loadSampleFast(s.id);
+      dItem.innerHTML = `
+        <div>
+          <div style="font-weight:700; font-size:13px; color:var(--text-main);">${s.title}</div>
+          <div style="font-size:11.5px; color:var(--text-dim); margin-top:2px;">${s.description}</div>
+        </div>
+        <span class="badge badge-${s.badge}">${s.category}</span>
+      `;
+      dashContainer.appendChild(dItem);
+
+      // Analyze page selector item
+      const aItem = document.createElement("div");
+      aItem.className = "sample-item";
+      aItem.id = "sample-item-" + s.id;
+      aItem.onclick = () => selectSample(s.id, s.title);
+      aItem.innerHTML = `
+        <div>
+          <div style="font-weight:700; font-size:13px; color:var(--text-main);">${s.title}</div>
+          <div style="font-size:11.5px; color:var(--text-dim); margin-top:2px;">${s.description}</div>
+        </div>
+        <span class="badge badge-${s.badge}">${s.category}</span>
+      `;
+      analyzeContainer.appendChild(aItem);
+    });
+  } catch (err) {
+    console.error("Failed to load samples:", err);
+  }
+}
+
+function loadSampleFast(sampleId) {
+  selectSample(sampleId, sampleId);
+  switchTab("analyze");
+}
+
+function selectSample(sampleId, title) {
+  currentSampleId = sampleId;
+  currentAudioFile = null;
+
+  document.querySelectorAll(".sample-item").forEach(i => i.classList.remove("selected"));
+  const sel = document.getElementById("sample-item-" + sampleId);
+  if (sel) sel.classList.add("selected");
+
+  // Reset file input
+  const fileMeta = document.getElementById("file-meta");
+  fileMeta.style.display = "none";
+  document.getElementById("file-input").value = "";
+
+  // Set audio player
+  const playerCard = document.getElementById("playback-card");
+  playerCard.style.display = "block";
+  document.getElementById("current-track-title").innerHTML = `Selected Benchmark Recording: <strong>${title}</strong>`;
+
+  const audioPlayer = document.getElementById("audio-player");
+  audioPlayer.src = "/api/samples/audio/" + sampleId;
+  audioPlayer.load();
+
+  // Scroll to player
+  playerCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function handleFileSelected(file) {
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith(".wav")) {
+    alert("Please select a standard WAV audio file (.wav).");
+    return;
+  }
+  currentAudioFile = file;
+  currentSampleId = null;
+
+  document.querySelectorAll(".sample-item").forEach(i => i.classList.remove("selected"));
+
+  const fileMeta = document.getElementById("file-meta");
+  const sizeKb = (file.size / 1024).toFixed(1);
+  fileMeta.innerHTML = `&#10003; <strong>${file.name}</strong> (${sizeKb} KB) ready for acoustic analysis.`;
+  fileMeta.style.display = "block";
+
+  const playerCard = document.getElementById("playback-card");
+  playerCard.style.display = "block";
+  document.getElementById("current-track-title").innerHTML = `Uploaded Hydrophone File: <strong>${file.name}</strong>`;
+
+  const audioPlayer = document.getElementById("audio-player");
+  audioPlayer.src = URL.createObjectURL(file);
+  audioPlayer.load();
+
+  playerCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+// Execute Acoustic Target Detection
+async function runAnalysis() {
+  const loading = document.getElementById("scan-loading");
+  const resultsDiv = document.getElementById("analysis-results");
+  const btn = document.getElementById("btn-run-analysis");
+
+  loading.style.display = "block";
+  resultsDiv.style.display = "none";
+  btn.disabled = true;
+
+  try {
+    let response;
+    if (currentAudioFile) {
+      // Upload workflow
+      const formData = new FormData();
+      formData.append("audio", currentAudioFile);
+      response = await fetch("/api/analyze_upload", {
+        method: "POST",
+        body: formData
+      });
+    } else if (currentSampleId) {
+      // Benchmark workflow
+      response = await fetch("/api/analyze_sample/" + encodeURIComponent(currentSampleId), {
+        method: "POST"
+      });
+    } else {
+      alert("Please select a sample recording or upload a WAV file first.");
+      loading.style.display = "none";
+      btn.disabled = false;
+      return;
+    }
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || "Analysis failed");
+    }
+
+    const data = await response.json();
+    currentAnalysisResult = data;
+    currentScanId = data.scan_id;
+
+    renderAnalysisOutput(data);
+    loadHistory(); // refresh history table
+  } catch (err) {
+    alert("Acoustic analysis error: " + err.message);
+  } finally {
+    loading.style.display = "none";
+    btn.disabled = false;
+  }
+}
+
+function renderAnalysisOutput(data) {
+  const summary = data.summary;
+  const quality = data.quality;
+  const timing = data.timing;
+  const viz = data.visualizations;
+  const timeline = data.timeline;
+
+  // Verdict Banner
+  const banner = document.getElementById("verdict-banner");
+  banner.className = "verdict-banner " + summary.verdict_badge;
+  document.getElementById("verdict-title").innerText = summary.overall_verdict;
+  document.getElementById("verdict-desc").innerText = summary.status_description;
+  document.getElementById("verdict-action").innerText = "Operational Action: " + summary.operator_action;
+  document.getElementById("verdict-conf").innerText = summary.mean_confidence + "%";
+  document.getElementById("verdict-disagree").innerText = "Branch Disagreement: " + summary.mean_disagreement + "%";
+
+  // KPIs
+  document.getElementById("kpi-snr").innerText = (quality.estimated_snr_db > 0 ? "+" : "") + quality.estimated_snr_db + " dB";
+  document.getElementById("kpi-floor").innerText = "Floor: " + quality.noise_floor_dbfs + " dBFS";
+  document.getElementById("kpi-quality").innerText = quality.quality_score + " / 100";
+  document.getElementById("kpi-quality-rating").innerText = quality.quality_rating;
+  document.getElementById("kpi-flatness").innerText = quality.spectral_flatness;
+  document.getElementById("kpi-latency").innerText = timing.total_latency_ms + " ms";
+  document.getElementById("kpi-rtf").innerText = "RTF: " + timing.rtf + (timing.is_realtime ? " (Real-Time)" : "");
+
+  // Visualizations
+  document.getElementById("img-waveform").src = "data:image/png;base64," + viz.waveform_b64;
+  document.getElementById("img-spectrogram").src = "data:image/png;base64," + viz.spectrogram_b64;
+
+  // Render Timeline in Tab 3 as well
+  renderTimelineData(data);
+
+  // Reveal results
+  const resultsDiv = document.getElementById("analysis-results");
+  resultsDiv.style.display = "block";
+  resultsDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderTimelineData(data) {
+  const timeline = data.timeline;
+  const ribbon = document.getElementById("timeline-ribbon");
+  const tbody = document.getElementById("timeline-tbody");
+  document.getElementById("timeline-recording-name").innerText = data.metadata.filename;
+
+  ribbon.innerHTML = "";
+  tbody.innerHTML = "";
+
+  timeline.forEach((seg, i) => {
+    // Ribbon item
+    let segClass = "ambient";
+    if (seg.decision_category === "CONFIRMED_TARGET") segClass = "target";
+    else if (seg.decision_category === "TENTATIVE_TARGET") segClass = "tentative";
+    else if (seg.decision_category === "UNCERTAIN_REVIEW") segClass = "uncertain";
+
+    const segEl = document.createElement("div");
+    segEl.className = `timeline-bar-seg ${segClass}`;
+    segEl.innerHTML = `<span>${seg.interval_label}</span><span style="font-size:9.5px">${seg.p_ship}%</span>`;
+    segEl.title = `Interval ${seg.interval_label}: ${seg.category_label}`;
+    ribbon.appendChild(segEl);
+
+    // Table row
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${seg.interval_label}</strong></td>
+      <td><span class="badge badge-${seg.category_badge}">${seg.category_label}</span></td>
+      <td>${seg.p_ship}%</td>
+      <td>${seg.confidence_pct}%</td>
+      <td>${seg.disagreement_pct}%</td>
+      <td>${seg.segment_snr_db} dB</td>
+      <td style="font-size: 12px; color: var(--text-muted);">${seg.recommendation}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// Load Scan History
+async function loadHistory() {
+  try {
+    const res = await fetch("/api/history");
+    const history = await res.json();
+    const tbody = document.getElementById("history-tbody");
+    tbody.innerHTML = "";
+
+    if (history.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No recorded scans yet.</td></tr>`;
+      return;
+    }
+
+    history.forEach(item => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><strong style="color:var(--cyan);">${item.scan_id}</strong></td>
+        <td>${item.timestamp}</td>
+        <td>${item.filename}</td>
+        <td>${item.duration_sec}s</td>
+        <td><span class="badge badge-${item.verdict_badge}">${item.overall_verdict}</span></td>
+        <td>${item.mean_confidence}%</td>
+        <td>${item.estimated_snr_db} dB</td>
+        <td>${item.target_segments}</td>
+        <td>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px;" onclick="inspectHistoricalScan('${item.scan_id}')">&#128065; View</button>
+            <a href="/api/report/${item.scan_id}" target="_blank" class="btn btn-primary" style="padding:4px 8px; font-size:11px;">&#128196; Report</a>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (err) {
+    console.error("Failed to load history:", err);
+  }
+}
+
+async function inspectHistoricalScan(scanId) {
+  try {
+    const res = await fetch("/api/history/" + scanId);
+    const data = await res.json();
+    currentAnalysisResult = data.full_result;
+    currentScanId = data.scan_id;
+    renderAnalysisOutput(data.full_result);
+    switchTab("analyze");
+  } catch (err) {
+    alert("Could not load scan details: " + err.message);
+  }
+}
+
+function openCurrentReport() {
+  if (currentScanId) {
+    window.open("/api/report/" + currentScanId, "_blank");
+  } else {
+    alert("No active scan report to download.");
+  }
+}
+
+// Load Academic Model Insights
+async function loadModelInsights() {
+  try {
+    const res = await fetch("/api/model_insights");
+    const data = await res.json();
+
+    // Metrics Table
+    const tbody = document.getElementById("insights-metrics-tbody");
+    tbody.innerHTML = "";
+    data.metrics.forEach(m => {
+      const isProposed = m.model.includes("Deep_DLR");
+      const rowStyle = isProposed ? "background: rgba(0, 210, 255, 0.08); font-weight: bold;" : "";
+      const tr = document.createElement("tr");
+      tr.style = rowStyle;
+      tr.innerHTML = `
+        <td>${m.model} ${isProposed ? '<span class="badge badge-success">Proposed Fix</span>' : ''}</td>
+        <td><strong style="color:var(--cyan);">${m.accuracy}%</strong></td>
+        <td>${m.precision}%</td>
+        <td>${m.recall}%</td>
+        <td>${m.f1}%</td>
+        <td>${m.roc_auc}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // Robustness Table
+    const robTbody = document.getElementById("insights-robustness-tbody");
+    robTbody.innerHTML = "";
+    for (const [name, stats] of Object.entries(data.robustness)) {
+      const isProposed = name.includes("Deep_DLR");
+      const rowStyle = isProposed ? "background: rgba(0, 210, 255, 0.08); font-weight: bold;" : "";
+      const tr = document.createElement("tr");
+      tr.style = rowStyle;
+      tr.innerHTML = `
+        <td>${name} ${isProposed ? '<span class="badge badge-success">Proposed</span>' : ''}</td>
+        <td><strong>${stats.acc_mean}% &plusmn; ${stats.acc_std}%</strong></td>
+        <td>${stats.f1_mean}% &plusmn; ${stats.f1_std}%</td>
+      `;
+      robTbody.appendChild(tr);
+    }
+  } catch (err) {
+    console.error("Failed to load model insights:", err);
+  }
+}
+
+// Drag & drop support
+const dropZone = document.getElementById("drop-zone");
+["dragenter", "dragover"].forEach(eventName => {
+  dropZone.addEventListener(eventName, e => {
+    e.preventDefault();
+    dropZone.classList.add("dragover");
+  }, false);
+});
+["dragleave", "drop"].forEach(eventName => {
+  dropZone.addEventListener(eventName, e => {
+    e.preventDefault();
+    dropZone.classList.remove("dragover");
+  }, false);
+});
+dropZone.addEventListener("drop", e => {
+  const dt = e.dataTransfer;
+  const files = dt.files;
+  if (files.length > 0) {
+    handleFileSelected(files[0]);
+  }
+});
+</script>
+
+</body>
+</html>
