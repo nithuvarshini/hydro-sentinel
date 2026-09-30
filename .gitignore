@@ -42,7 +42,6 @@ desktop.ini
 analysis_history.json
 reports/
 outputs/
-results/
 
 # Python packaging
 build/

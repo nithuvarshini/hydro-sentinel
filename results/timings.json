@@ -1,0 +1,8 @@
+{
+  "LogReg_baseline": 0.046265602111816406,
+  "Shallow_NoTransfer": 1.3307008743286133,
+  "Shallow_Transfer": 2.3392293453216553,
+  "Shallow_DLR": 3.3619329929351807,
+  "Deep_Transfer": 13.521861553192139,
+  "Deep_DLR": 22.44256043434143
+}

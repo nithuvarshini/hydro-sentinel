@@ -1,0 +1,4 @@
+domain,n_clips,n_no_ship,n_ship,duration_sec,sample_rate_hz,handcrafted_dim,spectrogram_dim,missing_values
+source,1600,800,800,1.0,4000,20,1024,0
+target,200,100,100,1.0,4000,20,1024,0
+test,500,250,250,1.0,4000,20,1024,0
